@@ -18,7 +18,7 @@ class GameState():
             ["--", "--", "--", "--", "--", "--", "--", "--"],
             ["--", "--", "--", "--", "--", "--", "--", "--"],
             ["--", "--", "--", "--", "--", "--", "--", "--"],
-            ["--", "--", "--", "bp", "--", "--", "--", "--"],
+            ["--", "--", "--", "--", "--", "--", "--", "--"],
             ["wp", "wp", "wp", "wp", "wp", "wp", "wp", "wp"],
             ["wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"]]
         self.moveFunctions = {"p": self.getPawnMoves, "R": self.getRookMoves, "N": self.getKnightMoves,
@@ -54,7 +54,6 @@ class GameState():
         '''
         return self.getAllPossibleMoves() #for now we will not worry about checks
 
-
     def getAllPossibleMoves(self):
         '''
         All moves without considering checks.
@@ -67,7 +66,6 @@ class GameState():
                     piece = self.board[row][col][1]
                     self.moveFunctions[piece](row, col, moves) #calls appropriate move function based on piece type
         return moves
-
 
     def getPawnMoves(self, row, col, moves):
         '''
@@ -96,40 +94,84 @@ class GameState():
                 if self.board[row+1][col+1][0] == "w":
                     moves.append(Move((row, col), (row+1, col+1), self.board))
 
-
     def getRookMoves(self, row, col, moves):
         '''
         Get all the rook moves for the rook located at row, col and add the moves to the list.
         '''
-        pass
-
+        directions = ((-1, 0), (0, -1), (1, 0), (0, 1)) #up, left, down, right
+        enemy_color = "b" if self.white_to_move else "w"
+        for direction in directions:
+            for i in range(1, 8):
+                end_row = row + direction[0] * i
+                end_col = col + direction[1] * i
+                if 0 <= end_row <= 7 and 0 <= end_col <= 7: #check for possible moves only in boundries of the board
+                    end_piece = self.board[end_row][end_col]
+                    if end_piece == "--": #empty space is valid
+                        moves.append(Move((row, col), (end_row, end_col), self.board))
+                    elif end_piece[0] == enemy_color: #capture enemy piece
+                        moves.append(Move((row, col), (end_row, end_col), self.board))
+                        break
+                    else: #friendly piece
+                        break
+                else: #off board
+                    break
 
     def getKnightMoves(self, row, col, moves):
         '''
         Get all the knight moves for the knight located at row col and add the moves to the list.
         '''
-        pass
+        knight_moves = ((-2, -1), (-2, 1), (-1, 2), (1, 2), (2, -1), (2, 1), (-1, -2), (1, -2)) #up/left up/right right/up right/down down/left down/right left/up left/down
+        ally_color = "w" if self.white_to_move else "b"
+        for move in knight_moves:
+            end_row = row + move[0]
+            end_col = col + move[1]
+            if 0 <= end_row <= 7 and 0 <= end_col <= 7:
+                end_piece = self.board[end_row][end_col]
+                if end_piece[0] != ally_color: #so it's either enemy piece or empty equare
+                    moves.append(Move((row, col), (end_row, end_col), self.board))
 
     def getBishopMoves(self, row, col, moves):
         '''
         Get all the bishop moves for the bishop located at row col and add the moves to the list.
         '''
-        pass
-
+        directions = ((-1, -1), (-1, 1), (1, 1), (1, -1)) #digaonals: up/left up/right down/right down/left
+        enemy_color = "b" if self.white_to_move else "w"
+        for direction in directions:
+            for i in range(1, 8):
+                end_row = row + direction[0] * i
+                end_col = col + direction[1] * i
+                if 0 <= end_row <= 7 and 0 <= end_col <=7: #check if the move is on board
+                    end_piece = self.board[end_row][end_col]
+                    if end_piece == "--": #empty space is valid
+                        moves.append(Move((row, col), (end_row, end_col), self.board))
+                    elif end_piece[0] == enemy_color: #capture enemy piece
+                        moves.append(Move((row, col), (end_row, end_col), self.board))
+                        break
+                    else: #friendly piece
+                        break
+                else: #off board
+                    break
 
     def getQueenMoves(self, row, col, moves):
         '''
         Get all the queen moves for the queen located at row col and add the moves to the list.
         '''
-        pass
+        self.getBishopMoves(row, col, moves)
+        self.getRookMoves(row, col, moves)
 
     def getKingMoves(self, row, col, moves):
         '''
         Get all the king moves for the king located at row col and add the moves to the list.
         '''
-        pass
-
-
+        king_moves = ((-1, -1), (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1))
+        ally_color = "w" if self.white_to_move else "b"
+        for move in king_moves:
+            end_row = row + move[0]
+            end_col = col + move[1]
+            if 0 <= end_row <= 7 and 0 <= end_col <= 7:
+                end_piece = self.board[end_row][end_col]
+                if end_piece[0] != ally_color:
+                    moves.append(Move((row, col), (end_row, end_col), self.board))
 class Move():
     '''
     in chess fields on the board are described by two symbols, one of them being number between 1-8 (which is corespodning to rows)
@@ -164,7 +206,7 @@ class Move():
 
 
     def getChessNotation(self):
-        return self.piece_moved + " " + self.getRankFile(self.start_row, self.start_col) + "->" + self.getRankFile(self.end_row, self.end_col) + " " + self.piece_captured 
+        return self.piece_moved + " " + self.getRankFile(self.start_row, self.start_col) + "->" + self.getRankFile(self.end_row, self.end_col) + " " + self.piece_captured
 
     def getRankFile(self, row, col):
         return self.cols_to_files[col] + self.rows_to_ranks[row]
