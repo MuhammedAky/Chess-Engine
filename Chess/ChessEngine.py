@@ -3,7 +3,6 @@ Storing all the information about the current state of chess game.
 Determining valid moves at current state.
 It will keep move log.
 '''
-
 class GameState():
     def __init__(self):
         '''
@@ -25,6 +24,10 @@ class GameState():
                               "B": self.getBishopMoves, "Q": self.getQueenMoves, "K": self.getKingMoves}
         self.white_to_move = True
         self.move_log = []
+        self.whiteKingLocation = (7, 4)
+        self.blackKingLocation = (0, 4)
+        self.checkMate = False
+        self.staleMate = False
 
 
     def makeMove(self, move):
@@ -36,6 +39,12 @@ class GameState():
         self.board[move.end_row][move.end_col] = move.piece_moved
         self.move_log.append(move) #log the move so we can undo it later
         self.white_to_move = not self.white_to_move #switch players
+        #update king's location if moved
+        if move.piece_moved == "wK":
+            self.whiteKingLocation = (move.end_row, move.end_col)
+        elif move.piece_moved == "bK":
+            self.blackKingLocation = (move.end_row, move.end_col)
+
 
     def undoMove(self):
         '''
@@ -46,13 +55,75 @@ class GameState():
             self.board[move.start_row][move.start_col] = move.piece_moved
             self.board[move.end_row][move.end_col] = move.piece_captured
             self.white_to_move = not self.white_to_move #swap players
+            #update the king's position if needed
+            if move.piece_moved == "wK":
+                self.whiteKingLocation = (move.start_row, move.start_col)
+            elif move.piece_moved == "bK":
+                self.blackKingLocation = (move.start_row, move.start_col)
 
 
     def getValidMoves(self):
         '''
         All moves considering checks.
         '''
-        return self.getAllPossibleMoves() #for now we will not worry about checks
+        # 1) generate all possible moves
+        moves = self.getAllPossibleMoves()
+        # 2) for each move, make the move
+        for i in range(len(moves)-1, -1, -1): # when removing from a list go backwards through that list
+            self.makeMove(moves[i])
+            # 3) generate all oponent's moves
+            # 4) for each of your oponent's moves, see if they attack your king
+            self.white_to_move = not self.white_to_move
+            if self.inCheck():
+                # 5) if they do attack your king, not a valid move
+                moves.remove(moves[i])
+            self.white_to_move = not self.white_to_move
+            self.undoMove()
+
+        if len(moves) == 0: #either checkmate or stalemate
+            if self.inCheck():
+                self.checkMate = True
+            else:
+                self.staleMate = True
+        else:
+            self.checkMate = False
+            self.staleMate = False
+
+        return moves
+
+    def inCheck(self):
+        '''
+        Determine if a current player is in check
+        '''
+        if self.white_to_move:
+            return self.squareUnderAttack(self.whiteKingLocation[0], self.whiteKingLocation[1])
+        else:
+            return self.squareUnderAttack(self.blackKingLocation[0], self.blackKingLocation[1])
+
+    def squareUnderAttack(self, row, col):
+        '''
+        Determine if enemy can attack the square row col
+        '''
+        self.white_to_move = not self.white_to_move #switch to oponent's point of wiev
+        opponents_moves = self.getAllPossibleMoves()
+        self.white_to_move = not self.white_to_move
+        for move in opponents_moves:
+            if move.end_row == row and move.end_col == col: #square is under attack
+                return True
+        return False
+
+    def getAllPossibleMoves(self):
+        '''
+        All moves without considering checks.
+        '''
+        moves = []
+        for row in range(len(self.board)):
+            for col in range(len(self.board[row])):
+                turn = self.board[row][col][0]
+                if (turn == "w" and self.white_to_move) or (turn == "b" and not self.white_to_move):
+                    piece = self.board[row][col][1]
+                    self.moveFunctions[piece](row, col, moves) #calls appropriate move function based on piece type
+        return moves
 
     def getAllPossibleMoves(self):
         '''
